@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supply Chain - Traçabilité</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1, h2 {
+      color: #333;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .lot-details {
+      background-color: #f0f0f0;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 20px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Traçabilité des Produits</h1>
+
+    <h2>Connexion</h2>
+    <button onclick="connectWallet()">Se connecter avec MetaMask</button>
+    <p id="wallet-address"></p>
+
+    <h2>Créer un Lot</h2>
+    <input type="text" id="productName" placeholder="Nom du produit">
+    <input type="text" id="lotId" placeholder="Identifiant du lot">
+    <input type="number" id="quantity" placeholder="Quantité totale">
+    <button onclick="createProductLot()">Créer le lot</button>
+
+    <h2>Transférer un Lot</h2>
+    <input type="text" id="transferLotId" placeholder="Identifiant du lot">
+    <input type="text" id="newOwner" placeholder="Nouvelle adresse propriétaire">
+    <button onclick="transferLotOwnership()">Transférer</button>
+
+    <h2>Afficher les Détails du Lot</h2>
+    <input type="text" id="searchLotId" placeholder="Identifiant du lot">
+    <button onclick="getLotDetails()">Afficher</button>
+
+    <div class="lot-details" id="lotDetails"></div>
+  </div>
+
+  <script>
+    let provider, signer, contract;
+    const contractAddress = "0xYourContractAddressHere"; // Remplace avec ton adresse déployée
+    const abi = [
+      // Ajoute ici l'ABI de ton contrat SupplyChain
+    ];
+
+    async function connectWallet() {
+      if (window.ethereum) {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        document.getElementById('wallet-address').innerText = "Connecté : " + await signer.getAddress();
+        contract = new ethers.Contract(contractAddress, abi, signer);
+      } else {
+        alert("Veuillez installer MetaMask");
+      }
+    }
+
+    async function createProductLot() {
+      const name = document.getElementById('productName').value;
+      const lotId = document.getElementById('lotId').value;
+      const qty = document.getElementById('quantity').value;
+      try {
+        const tx = await contract.createProductLot(name, lotId, parseInt(qty));
+        await tx.wait();
+        alert("Lot créé avec succès !");
+      } catch (err) {
+        alert("Erreur : " + err.message);
+      }
+    }
+
+    async function transferLotOwnership() {
+      const lotId = document.getElementById('transferLotId').value;
+      const newOwner = document.getElementById('newOwner').value;
+      try {
+        const tx = await contract.transferLotOwnership(lotId, newOwner);
+        await tx.wait();
+        alert("Propriété transférée !");
+      } catch (err) {
+        alert("Erreur : " + err.message);
+      }
+    }
+
+    async function getLotDetails() {
+      const lotId = document.getElementById('searchLotId').value;
+      try {
+        const details = await contract.getLotDetails(lotId);
+        document.getElementById('lotDetails').innerHTML = `
+          <p><strong>Nom :</strong> ${details[0]}</p>
+          <p><strong>Lot ID :</strong> ${details[1]}</p>
+          <p><strong>Quantité :</strong> ${details[2].toString()}</p>
+          <p><strong>Fabricant :</strong> ${details[3]}</p>
+          <p><strong>Propriétaire actuel :</strong> ${details[4]}</p>
+          <p><strong>Date d'achat :</strong> ${new Date(Number(details[5]) * 1000).toLocaleString()}</p>
+        `;
+      } catch (err) {
+        alert("Erreur : " + err.message);
+      }
+    }
+  </script>
+</body>
+</html>
