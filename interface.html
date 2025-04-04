@@ -202,6 +202,14 @@
         lotIds.forEach(id => {
           const item = document.createElement('li');
           item.textContent = id;
+          const button = document.createElement('button');
+          button.textContent = 'Détails';
+          button.style.marginLeft = '10px';
+          button.onclick = () => {
+            document.getElementById('searchLotId').value = id;
+            getLotDetails();
+          };
+          item.appendChild(button);
           list.appendChild(item);
         });
       } catch (err) {
