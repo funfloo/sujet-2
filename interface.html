@@ -12,7 +12,7 @@
       background-color: #f5f5f5;
     }
     .container {
-      max-width: 700px;
+      max-width: 800px;
       margin: auto;
       background-color: #fff;
       padding: 20px;
@@ -22,7 +22,7 @@
     h1, h2 {
       color: #333;
     }
-    input, button {
+    input, button, select {
       width: 100%;
       padding: 10px;
       margin: 8px 0;
@@ -43,6 +43,17 @@
       border-radius: 6px;
       margin-top: 20px;
     }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th, td {
+      padding: 8px;
+      text-align: left;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script>
 </head>
@@ -50,70 +61,41 @@
   <div class="container">
     <h1>Traçabilité des Produits</h1>
 
-    <h2>Connexion</h2>
     <button onclick="connectWallet()">Se connecter avec MetaMask</button>
     <p id="wallet-address"></p>
 
-    <h2>Créer un Lot</h2>
-    <input type="text" id="productName" placeholder="Nom du produit">
-    <input type="text" id="lotId" placeholder="Identifiant du lot">
-    <input type="number" id="quantity" placeholder="Quantité totale">
-    <button onclick="createProductLot()">Créer le lot</button>
+    <h2>Attribuer un rôle</h2>
+    <input type="text" id="participantAddress" placeholder="Adresse">
+    <select id="participantRole">
+      <option value="1">Fabricant</option>
+      <option value="2">Transporteur</option>
+      <option value="3">Revendeur</option>
+      <option value="4">Client</option>
+    </select>
+    <button onclick="setRole()">Définir le rôle</button>
 
-    <h2>Transférer un Lot</h2>
-    <input type="text" id="transferLotId" placeholder="Identifiant du lot">
-    <input type="text" id="newOwner" placeholder="Nouvelle adresse propriétaire">
-    <button onclick="transferLotOwnership()">Transférer</button>
+    <h2>Vérifier un rôle</h2>
+    <input type="text" id="roleCheckAddress" placeholder="Adresse">
+    <button onclick="getRole()">Vérifier</button>
+    <p id="roleResult"></p>
 
-    <h2>Afficher les Détails du Lot</h2>
-    <input type="text" id="searchLotId" placeholder="Identifiant du lot">
-    <button onclick="getLotDetails()">Afficher</button>
-    <div class="lot-details" id="lotDetails"></div>
-
-    <h2>Ajouter à la Whitelist</h2>
-    <input type="text" id="whitelistAddress" placeholder="Adresse à autoriser">
-    <button onclick="addToWhitelist()">Ajouter</button>
-
-    <h2>Retirer de la Whitelist</h2>
-    <input type="text" id="removeWhitelistAddress" placeholder="Adresse à retirer">
-    <button onclick="removeFromWhitelist()">Retirer</button>
-
-    <h2>Vérifier la Whitelist</h2>
-    <input type="text" id="checkWhitelistAddress" placeholder="Adresse à vérifier">
-    <button onclick="checkWhitelist()">Vérifier</button>
-    <p id="whitelistResult"></p>
-
-    <h2>Afficher Tous les Lots</h2>
-    <button onclick="getAllLotIds()">Voir tous les lots</button>
-    <table id="lotIdTable" style="width:100%; margin-top:10px; border-collapse: collapse;">
-      <thead>
-        <tr>
-          <th style="border: 1px solid #ccc; padding: 8px;">Lot ID</th>
-          <th style="border: 1px solid #ccc; padding: 8px;">Action</th>
-        </tr>
-      </thead>
-      <tbody id="lotIdList"></tbody>
-    </table>
+    <h2>Afficher l'historique de transfert</h2>
+    <input type="text" id="historyLotId" placeholder="Lot ID">
+    <button onclick="showHistory()">Afficher l'historique</button>
+    <ul id="historyList"></ul>
   </div>
 
   <script>
     let provider, signer, contract;
     const contractAddress = "0xYourContractAddressHere";
     const abi = [
-      {"inputs": [{"internalType": "address", "name": "account", "type": "address"}], "name": "addToWhitelist", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
-      {"inputs": [{"internalType": "address", "name": "account", "type": "address"}], "name": "removeFromWhitelist", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
-      {"inputs": [{"internalType": "string", "name": "productName", "type": "string"}, {"internalType": "string", "name": "lotId", "type": "string"}, {"internalType": "uint256", "name": "totalQuantity", "type": "uint256"}], "name": "createProductLot", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
-      {"inputs": [{"internalType": "string", "name": "lotId", "type": "string"}, {"internalType": "address", "name": "newOwner", "type": "address"}], "name": "transferLotOwnership", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
-      {"inputs": [{"internalType": "string", "name": "lotId", "type": "string"}], "name": "getLotDetails", "outputs": [
-        {"internalType": "string", "name": "", "type": "string"},
-        {"internalType": "string", "name": "", "type": "string"},
-        {"internalType": "uint256", "name": "", "type": "uint256"},
-        {"internalType": "address", "name": "", "type": "address"},
-        {"internalType": "address", "name": "", "type": "address"},
-        {"internalType": "uint256", "name": "", "type": "uint256"}
-      ], "stateMutability": "view", "type": "function"},
-      {"inputs": [], "name": "getAllLotIds", "outputs": [{"internalType": "string[]", "name": "", "type": "string[]"}], "stateMutability": "view", "type": "function"},
-      {"inputs": [{"internalType": "address", "name": "", "type": "address"}], "name": "whitelist", "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "view", "type": "function"}
+      {"inputs": [{"internalType": "address", "name": "account", "type": "address"}, {"internalType": "uint8", "name": "role", "type": "uint8"}, {"internalType": "bool", "name": "status", "type": "bool"}], "name": "setParticipant", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+      {"inputs": [{"internalType": "address", "name": "account", "type": "address"}], "name": "getParticipantRole", "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}], "stateMutability": "view", "type": "function"},
+      {"inputs": [{"internalType": "string", "name": "lotId", "type": "string"}], "name": "getTransferHistory", "outputs": [{"components": [
+        {"internalType": "address", "name": "from", "type": "address"},
+        {"internalType": "address", "name": "to", "type": "address"},
+        {"internalType": "uint256", "name": "date", "type": "uint256"}
+      ], "internalType": "struct SupplyChain.Transfer[]", "name": "", "type": "tuple[]"}], "stateMutability": "view", "type": "function"}
     ];
 
     async function connectWallet() {
@@ -121,113 +103,46 @@
         provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         signer = provider.getSigner();
-        document.getElementById('wallet-address').innerText = "Connecté : " + await signer.getAddress();
         contract = new ethers.Contract(contractAddress, abi, signer);
+        document.getElementById('wallet-address').innerText = "Connecté : " + await signer.getAddress();
       } else {
-        alert("Veuillez installer MetaMask");
+        alert("Installez MetaMask");
       }
     }
 
-    async function createProductLot() {
-      const name = document.getElementById('productName').value;
-      const lotId = document.getElementById('lotId').value;
-      const qty = document.getElementById('quantity').value;
+    async function setRole() {
+      const address = document.getElementById("participantAddress").value;
+      const role = document.getElementById("participantRole").value;
       try {
-        const tx = await contract.createProductLot(name, lotId, parseInt(qty));
+        const tx = await contract.setParticipant(address, role, true);
         await tx.wait();
-        alert("Lot créé avec succès !");
+        alert("Rôle assigné avec succès");
       } catch (err) {
         alert("Erreur : " + err.message);
       }
     }
 
-    async function transferLotOwnership() {
-      const lotId = document.getElementById('transferLotId').value;
-      const newOwner = document.getElementById('newOwner').value;
+    async function getRole() {
+      const address = document.getElementById("roleCheckAddress").value;
       try {
-        const tx = await contract.transferLotOwnership(lotId, newOwner);
-        await tx.wait();
-        alert("Propriété transférée !");
+        const role = await contract.getParticipantRole(address);
+        const roles = ["Aucun", "Fabricant", "Transporteur", "Revendeur", "Client"];
+        document.getElementById("roleResult").innerText = `Rôle de ${address} : ${roles[role]}`;
       } catch (err) {
         alert("Erreur : " + err.message);
       }
     }
 
-    async function getLotDetails() {
-      const lotId = document.getElementById('searchLotId').value;
+    async function showHistory() {
+      const lotId = document.getElementById("historyLotId").value;
       try {
-        const details = await contract.getLotDetails(lotId);
-        document.getElementById('lotDetails').innerHTML = `
-          <p><strong>Nom :</strong> ${details[0]}</p>
-          <p><strong>Lot ID :</strong> ${details[1]}</p>
-          <p><strong>Quantité :</strong> ${details[2].toString()}</p>
-          <p><strong>Fabricant :</strong> ${details[3]}</p>
-          <p><strong>Propriétaire actuel :</strong> ${details[4]}</p>
-          <p><strong>Date d'achat :</strong> ${new Date(Number(details[5]) * 1000).toLocaleString()}</p>
-        `;
-      } catch (err) {
-        alert("Erreur : " + err.message);
-      }
-    }
-
-    async function addToWhitelist() {
-      const address = document.getElementById('whitelistAddress').value;
-      try {
-        const tx = await contract.addToWhitelist(address);
-        await tx.wait();
-        alert("Adresse ajoutée à la whitelist !");
-      } catch (err) {
-        alert("Erreur : " + err.message);
-      }
-    }
-
-    async function removeFromWhitelist() {
-      const address = document.getElementById('removeWhitelistAddress').value;
-      try {
-        const tx = await contract.removeFromWhitelist(address);
-        await tx.wait();
-        alert("Adresse retirée de la whitelist !");
-      } catch (err) {
-        alert("Erreur : " + err.message);
-      }
-    }
-
-    async function checkWhitelist() {
-      const address = document.getElementById('checkWhitelistAddress').value;
-      try {
-        const result = await contract.whitelist(address);
-        document.getElementById('whitelistResult').innerText = result ? "✅ Cette adresse est dans la whitelist." : "❌ Cette adresse n'est pas dans la whitelist.";
-      } catch (err) {
-        alert("Erreur : " + err.message);
-      }
-    }
-
-    async function getAllLotIds() {
-      try {
-        const lotIds = await contract.getAllLotIds();
-        const list = document.getElementById('lotIdList');
-        list.innerHTML = ''; // Reset previous rows
-        lotIds.forEach(id => {
-          const row = document.createElement('tr');
-          const cell1 = document.createElement('td');
-          const cell2 = document.createElement('td');
-
-          cell1.textContent = id;
-          cell1.style.border = '1px solid #ccc';
-          cell1.style.padding = '8px';
-          const button = document.createElement('button');
-          button.textContent = 'Détails';
-          button.style.marginLeft = '10px';
-          button.onclick = () => {
-            document.getElementById('searchLotId').value = id;
-            getLotDetails();
-          };
-          cell2.appendChild(button);
-          cell2.style.border = '1px solid #ccc';
-          cell2.style.padding = '8px';
-          row.appendChild(cell1);
-          row.appendChild(cell2);
-          list.appendChild(row);
+        const history = await contract.getTransferHistory(lotId);
+        const list = document.getElementById("historyList");
+        list.innerHTML = '';
+        history.forEach(h => {
+          const li = document.createElement("li");
+          li.innerText = `De ${h.from} à ${h.to} le ${new Date(h.date * 1000).toLocaleString()}`;
+          list.appendChild(li);
         });
       } catch (err) {
         alert("Erreur : " + err.message);
