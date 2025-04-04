@@ -77,67 +77,30 @@
     <h2>Retirer de la Whitelist</h2>
     <input type="text" id="removeWhitelistAddress" placeholder="Adresse à retirer">
     <button onclick="removeFromWhitelist()">Retirer</button>
+
+    <h2>Vérifier la Whitelist</h2>
+    <input type="text" id="checkWhitelistAddress" placeholder="Adresse à vérifier">
+    <button onclick="checkWhitelist()">Vérifier</button>
+    <p id="whitelistResult"></p>
   </div>
 
   <script>
     let provider, signer, contract;
     const contractAddress = "0xYourContractAddressHere";
     const abi = [
-      {
-        "inputs": [
-          {"internalType": "address", "name": "account", "type": "address"}
-        ],
-        "name": "addToWhitelist",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {"internalType": "address", "name": "account", "type": "address"}
-        ],
-        "name": "removeFromWhitelist",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {"internalType": "string", "name": "productName", "type": "string"},
-          {"internalType": "string", "name": "lotId", "type": "string"},
-          {"internalType": "uint256", "name": "totalQuantity", "type": "uint256"}
-        ],
-        "name": "createProductLot",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {"internalType": "string", "name": "lotId", "type": "string"},
-          {"internalType": "address", "name": "newOwner", "type": "address"}
-        ],
-        "name": "transferLotOwnership",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {"internalType": "string", "name": "lotId", "type": "string"}
-        ],
-        "name": "getLotDetails",
-        "outputs": [
-          {"internalType": "string", "name": "", "type": "string"},
-          {"internalType": "string", "name": "", "type": "string"},
-          {"internalType": "uint256", "name": "", "type": "uint256"},
-          {"internalType": "address", "name": "", "type": "address"},
-          {"internalType": "address", "name": "", "type": "address"},
-          {"internalType": "uint256", "name": "", "type": "uint256"}
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      }
+      {"inputs": [{"internalType": "address", "name": "account", "type": "address"}], "name": "addToWhitelist", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+      {"inputs": [{"internalType": "address", "name": "account", "type": "address"}], "name": "removeFromWhitelist", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+      {"inputs": [{"internalType": "string", "name": "productName", "type": "string"}, {"internalType": "string", "name": "lotId", "type": "string"}, {"internalType": "uint256", "name": "totalQuantity", "type": "uint256"}], "name": "createProductLot", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+      {"inputs": [{"internalType": "string", "name": "lotId", "type": "string"}, {"internalType": "address", "name": "newOwner", "type": "address"}], "name": "transferLotOwnership", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+      {"inputs": [{"internalType": "string", "name": "lotId", "type": "string"}], "name": "getLotDetails", "outputs": [
+        {"internalType": "string", "name": "", "type": "string"},
+        {"internalType": "string", "name": "", "type": "string"},
+        {"internalType": "uint256", "name": "", "type": "uint256"},
+        {"internalType": "address", "name": "", "type": "address"},
+        {"internalType": "address", "name": "", "type": "address"},
+        {"internalType": "uint256", "name": "", "type": "uint256"}
+      ], "stateMutability": "view", "type": "function"},
+      {"inputs": [{"internalType": "address", "name": "", "type": "address"}], "name": "whitelist", "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "view", "type": "function"}
     ];
 
     async function connectWallet() {
@@ -211,6 +174,16 @@
         const tx = await contract.removeFromWhitelist(address);
         await tx.wait();
         alert("Adresse retirée de la whitelist !");
+      } catch (err) {
+        alert("Erreur : " + err.message);
+      }
+    }
+
+    async function checkWhitelist() {
+      const address = document.getElementById('checkWhitelistAddress').value;
+      try {
+        const result = await contract.whitelist(address);
+        document.getElementById('whitelistResult').innerText = result ? "✅ Cette adresse est dans la whitelist." : "❌ Cette adresse n'est pas dans la whitelist.";
       } catch (err) {
         alert("Erreur : " + err.message);
       }
