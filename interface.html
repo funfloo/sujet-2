@@ -1,6 +1,92 @@
-<script>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supply Chain - Traçabilité</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1, h2 {
+      color: #333;
+    }
+    input, button, select {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .lot-details {
+      background-color: #f0f0f0;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th, td {
+      padding: 8px;
+      text-align: left;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Traçabilité des Produits</h1>
+    <button id="connectWalletBtn">Se connecter avec MetaMask</button>
+    <p id="wallet-address"></p>
+
+    <h2>Attribuer un rôle</h2>
+    <input type="text" id="participantAddress" placeholder="Adresse">
+    <select id="participantRole">
+      <option value="1">Fabricant</option>
+      <option value="2">Transporteur</option>
+      <option value="3">Revendeur</option>
+      <option value="4">Client</option>
+    </select>
+    <button id="setRoleBtn">Définir le rôle</button>
+
+    <h2>Vérifier un rôle</h2>
+    <input type="text" id="roleCheckAddress" placeholder="Adresse">
+    <button id="getRoleBtn">Vérifier</button>
+    <p id="roleResult"></p>
+
+    <h2>Afficher l'historique de transfert</h2>
+    <input type="text" id="historyLotId" placeholder="Lot ID">
+    <button id="showHistoryBtn">Afficher l'historique</button>
+    <ul id="historyList"></ul>
+  </div>
+
+  <script>
     let provider, signer, contract;
-    const contractAddress = "0xYourContractAddressHere";
+    const contractAddress = "0xYourContractAddressHere"; // Remplacez par l'adresse réelle de votre contrat
     const abi = [
       {
         "inputs": [
@@ -37,11 +123,11 @@
         "type": "function"
       }
     ];
-  
+
+    // Connexion au wallet via MetaMask
     async function connectWallet() {
       if (window.ethereum) {
         try {
-          // Indiquer visuellement que la connexion est en cours
           document.getElementById('wallet-address').innerText = "Connexion en cours...";
           provider = new ethers.providers.Web3Provider(window.ethereum);
           await provider.send("eth_requestAccounts", []);
@@ -57,21 +143,21 @@
         alert("Veuillez installer MetaMask");
       }
     }
-  
+
+    // Attribution d'un rôle à une adresse donnée
     async function setRole() {
       const address = document.getElementById("participantAddress").value.trim();
       const role = document.getElementById("participantRole").value;
       
-      // Validation de l'adresse Ethereum
+      // Vérification de l'adresse Ethereum
       if (!ethers.utils.isAddress(address)) {
         alert("Adresse Ethereum invalide !");
         return;
       }
       
+      const btn = document.getElementById("setRoleBtn");
+      btn.disabled = true;
       try {
-        // Désactiver le bouton pour éviter les appels multiples
-        const btn = document.querySelector("button[onclick='setRole()']");
-        btn.disabled = true;
         const tx = await contract.setParticipant(address, role, true);
         await tx.wait();
         alert("Rôle assigné avec succès");
@@ -79,16 +165,15 @@
         alert("Erreur : " + err.message);
         console.error(err);
       } finally {
-        // Réactiver le bouton
-        const btn = document.querySelector("button[onclick='setRole()']");
         btn.disabled = false;
       }
     }
-  
+
+    // Vérification du rôle d'une adresse
     async function getRole() {
       const address = document.getElementById("roleCheckAddress").value.trim();
       
-      // Validation de l'adresse Ethereum
+      // Vérification de l'adresse Ethereum
       if (!ethers.utils.isAddress(address)) {
         alert("Adresse Ethereum invalide !");
         return;
@@ -103,7 +188,8 @@
         console.error(err);
       }
     }
-  
+
+    // Affichage de l'historique des transferts pour un Lot ID donné
     async function showHistory() {
       const lotId = document.getElementById("historyLotId").value.trim();
       if (lotId === "") {
@@ -111,10 +197,9 @@
         return;
       }
       
+      const list = document.getElementById("historyList");
+      list.innerHTML = "<li>Chargement...</li>";
       try {
-        // Optionnel : Indiquer le chargement de l'historique
-        const list = document.getElementById("historyList");
-        list.innerHTML = "<li>Chargement...</li>";
         const history = await contract.getTransferHistory(lotId);
         list.innerHTML = '';
         if (history.length === 0) {
@@ -131,4 +216,12 @@
         console.error(err);
       }
     }
+
+    // Association des événements aux boutons
+    document.getElementById("connectWalletBtn").addEventListener("click", connectWallet);
+    document.getElementById("setRoleBtn").addEventListener("click", setRole);
+    document.getElementById("getRoleBtn").addEventListener("click", getRole);
+    document.getElementById("showHistoryBtn").addEventListener("click", showHistory);
   </script>
+</body>
+</html>
