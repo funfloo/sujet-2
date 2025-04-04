@@ -4,6 +4,9 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract Traceabilite is Ownable {
+    // Constructeur : initialise le propriétaire en passant msg.sender à Ownable
+    constructor() Ownable(msg.sender) {}
+
     // Structure pour un lot de produits
     struct Produit {
         address fabricant;
@@ -33,7 +36,7 @@ contract Traceabilite is Ownable {
         _;
     }
 
-    // Gestion de la whitelist
+    // Fonctions de gestion de la whitelist
     function ajouterParticipant(address _participant) public onlyOwner {
         whitelist[_participant] = true;
         emit ParticipantAjoute(_participant);
@@ -65,7 +68,7 @@ contract Traceabilite is Ownable {
         emit ProduitEnregistre(_identifiantLot, _nomProduit, msg.sender);
     }
 
-    // Mise à jour du dernier propriétaire du produit
+    // Transfert de propriété d'un produit
     function transfererProduit(
         string memory _identifiantLot,
         string memory _nouveauProprietaire,
