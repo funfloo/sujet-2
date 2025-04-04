@@ -1,144 +1,126 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Supply Chain - Traçabilité</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background-color: #f5f5f5;
-    }
-    .container {
-      max-width: 800px;
-      margin: auto;
-      background-color: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    h1, h2 {
-      color: #333;
-    }
-    input, button, select {
-      width: 100%;
-      padding: 10px;
-      margin: 8px 0;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-    }
-    button {
-      background-color: #4CAF50;
-      color: white;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-    .lot-details {
-      background-color: #f0f0f0;
-      padding: 15px;
-      border-radius: 6px;
-      margin-top: 20px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    table, th, td {
-      border: 1px solid #ccc;
-    }
-    th, td {
-      padding: 8px;
-      text-align: left;
-    }
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script>
-</head>
-<body>
-  <div class="container">
-    <h1>Traçabilité des Produits</h1>
-
-    <button onclick="connectWallet()">Se connecter avec MetaMask</button>
-    <p id="wallet-address"></p>
-
-    <h2>Attribuer un rôle</h2>
-    <input type="text" id="participantAddress" placeholder="Adresse">
-    <select id="participantRole">
-      <option value="1">Fabricant</option>
-      <option value="2">Transporteur</option>
-      <option value="3">Revendeur</option>
-      <option value="4">Client</option>
-    </select>
-    <button onclick="setRole()">Définir le rôle</button>
-
-    <h2>Vérifier un rôle</h2>
-    <input type="text" id="roleCheckAddress" placeholder="Adresse">
-    <button onclick="getRole()">Vérifier</button>
-    <p id="roleResult"></p>
-
-    <h2>Afficher l'historique de transfert</h2>
-    <input type="text" id="historyLotId" placeholder="Lot ID">
-    <button onclick="showHistory()">Afficher l'historique</button>
-    <ul id="historyList"></ul>
-  </div>
-
-  <script>
+<script>
     let provider, signer, contract;
     const contractAddress = "0xYourContractAddressHere";
     const abi = [
-      {"inputs": [{"internalType": "address", "name": "account", "type": "address"}, {"internalType": "uint8", "name": "role", "type": "uint8"}, {"internalType": "bool", "name": "status", "type": "bool"}], "name": "setParticipant", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
-      {"inputs": [{"internalType": "address", "name": "account", "type": "address"}], "name": "getParticipantRole", "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}], "stateMutability": "view", "type": "function"},
-      {"inputs": [{"internalType": "string", "name": "lotId", "type": "string"}], "name": "getTransferHistory", "outputs": [{"components": [
-        {"internalType": "address", "name": "from", "type": "address"},
-        {"internalType": "address", "name": "to", "type": "address"},
-        {"internalType": "uint256", "name": "date", "type": "uint256"}
-      ], "internalType": "struct SupplyChain.Transfer[]", "name": "", "type": "tuple[]"}], "stateMutability": "view", "type": "function"}
+      {
+        "inputs": [
+          {"internalType": "address", "name": "account", "type": "address"},
+          {"internalType": "uint8", "name": "role", "type": "uint8"},
+          {"internalType": "bool", "name": "status", "type": "bool"}
+        ],
+        "name": "setParticipant",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
+        "name": "getParticipantRole",
+        "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [{"internalType": "string", "name": "lotId", "type": "string"}],
+        "name": "getTransferHistory",
+        "outputs": [{
+          "components": [
+            {"internalType": "address", "name": "from", "type": "address"},
+            {"internalType": "address", "name": "to", "type": "address"},
+            {"internalType": "uint256", "name": "date", "type": "uint256"}
+          ],
+          "internalType": "struct SupplyChain.Transfer[]",
+          "name": "",
+          "type": "tuple[]"
+        }],
+        "stateMutability": "view",
+        "type": "function"
+      }
     ];
-
+  
     async function connectWallet() {
       if (window.ethereum) {
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        signer = provider.getSigner();
-        contract = new ethers.Contract(contractAddress, abi, signer);
-        document.getElementById('wallet-address').innerText = "Connecté : " + await signer.getAddress();
+        try {
+          // Indiquer visuellement que la connexion est en cours
+          document.getElementById('wallet-address').innerText = "Connexion en cours...";
+          provider = new ethers.providers.Web3Provider(window.ethereum);
+          await provider.send("eth_requestAccounts", []);
+          signer = provider.getSigner();
+          contract = new ethers.Contract(contractAddress, abi, signer);
+          const userAddress = await signer.getAddress();
+          document.getElementById('wallet-address').innerText = "Connecté : " + userAddress;
+        } catch (error) {
+          document.getElementById('wallet-address').innerText = "Erreur lors de la connexion";
+          console.error(error);
+        }
       } else {
-        alert("Installez MetaMask");
+        alert("Veuillez installer MetaMask");
       }
     }
-
+  
     async function setRole() {
-      const address = document.getElementById("participantAddress").value;
+      const address = document.getElementById("participantAddress").value.trim();
       const role = document.getElementById("participantRole").value;
+      
+      // Validation de l'adresse Ethereum
+      if (!ethers.utils.isAddress(address)) {
+        alert("Adresse Ethereum invalide !");
+        return;
+      }
+      
       try {
+        // Désactiver le bouton pour éviter les appels multiples
+        const btn = document.querySelector("button[onclick='setRole()']");
+        btn.disabled = true;
         const tx = await contract.setParticipant(address, role, true);
         await tx.wait();
         alert("Rôle assigné avec succès");
       } catch (err) {
         alert("Erreur : " + err.message);
+        console.error(err);
+      } finally {
+        // Réactiver le bouton
+        const btn = document.querySelector("button[onclick='setRole()']");
+        btn.disabled = false;
       }
     }
-
+  
     async function getRole() {
-      const address = document.getElementById("roleCheckAddress").value;
+      const address = document.getElementById("roleCheckAddress").value.trim();
+      
+      // Validation de l'adresse Ethereum
+      if (!ethers.utils.isAddress(address)) {
+        alert("Adresse Ethereum invalide !");
+        return;
+      }
+      
       try {
         const role = await contract.getParticipantRole(address);
         const roles = ["Aucun", "Fabricant", "Transporteur", "Revendeur", "Client"];
-        document.getElementById("roleResult").innerText = `Rôle de ${address} : ${roles[role]}`;
+        document.getElementById("roleResult").innerText = `Rôle de ${address} : ${roles[role] || "Inconnu"}`;
       } catch (err) {
         alert("Erreur : " + err.message);
+        console.error(err);
       }
     }
-
+  
     async function showHistory() {
-      const lotId = document.getElementById("historyLotId").value;
+      const lotId = document.getElementById("historyLotId").value.trim();
+      if (lotId === "") {
+        alert("Veuillez saisir un Lot ID");
+        return;
+      }
+      
       try {
-        const history = await contract.getTransferHistory(lotId);
+        // Optionnel : Indiquer le chargement de l'historique
         const list = document.getElementById("historyList");
+        list.innerHTML = "<li>Chargement...</li>";
+        const history = await contract.getTransferHistory(lotId);
         list.innerHTML = '';
+        if (history.length === 0) {
+          list.innerHTML = "<li>Aucun transfert trouvé pour ce Lot ID</li>";
+          return;
+        }
         history.forEach(h => {
           const li = document.createElement("li");
           li.innerText = `De ${h.from} à ${h.to} le ${new Date(h.date * 1000).toLocaleString()}`;
@@ -146,8 +128,7 @@
         });
       } catch (err) {
         alert("Erreur : " + err.message);
+        console.error(err);
       }
     }
   </script>
-</body>
-</html>
