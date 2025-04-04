@@ -85,7 +85,15 @@
 
     <h2>Afficher Tous les Lots</h2>
     <button onclick="getAllLotIds()">Voir tous les lots</button>
-    <ul id="lotIdList"></ul>
+    <table id="lotIdTable" style="width:100%; margin-top:10px; border-collapse: collapse;">
+      <thead>
+        <tr>
+          <th style="border: 1px solid #ccc; padding: 8px;">Lot ID</th>
+          <th style="border: 1px solid #ccc; padding: 8px;">Action</th>
+        </tr>
+      </thead>
+      <tbody id="lotIdList"></tbody>
+    </table>
   </div>
 
   <script>
@@ -198,10 +206,15 @@
       try {
         const lotIds = await contract.getAllLotIds();
         const list = document.getElementById('lotIdList');
-        list.innerHTML = '';
+        list.innerHTML = ''; // Reset previous rows
         lotIds.forEach(id => {
-          const item = document.createElement('li');
-          item.textContent = id;
+          const row = document.createElement('tr');
+          const cell1 = document.createElement('td');
+          const cell2 = document.createElement('td');
+
+          cell1.textContent = id;
+          cell1.style.border = '1px solid #ccc';
+          cell1.style.padding = '8px';
           const button = document.createElement('button');
           button.textContent = 'Détails';
           button.style.marginLeft = '10px';
@@ -209,8 +222,12 @@
             document.getElementById('searchLotId').value = id;
             getLotDetails();
           };
-          item.appendChild(button);
-          list.appendChild(item);
+          cell2.appendChild(button);
+          cell2.style.border = '1px solid #ccc';
+          cell2.style.padding = '8px';
+          row.appendChild(cell1);
+          row.appendChild(cell2);
+          list.appendChild(row);
         });
       } catch (err) {
         alert("Erreur : " + err.message);
