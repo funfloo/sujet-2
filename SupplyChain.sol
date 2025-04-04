@@ -1,110 +1,79 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract SupplyChain {
-    enum Role { None, Fabricant, Transporteur, Revendeur, Client }
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-    struct Participant {
-        bool authorized;
-        Role role;
+contract Traceabilite is Ownable {
+    // Structure pour un lot de produits
+    struct Produit {
+        address fabricant;
+        uint256 nombreDeLots;
+        string nomProduit;
+        string identifiantLot;
+        uint256 quantite;
+        string dernierProprietaire;
+        uint256 dateAchat;
     }
 
-    struct ProductLot {
-        string productName;
-        string lotId;
-        uint256 totalQuantity;
-        address manufacturer;
-        address currentOwner;
-        uint256 purchaseDate;
-    }
+    // Mapping des identifiants de lots aux produits
+    mapping(string => Produit) public produits;
 
-    struct Transfer {
-        address from;
-        address to;
-        uint256 date;
-    }
+    // Mapping pour la whitelist des participants autorisés
+    mapping(address => bool) public whitelist;
 
-    address public owner;
+    // Événements
+    event ProduitEnregistre(string identifiantLot, string nomProduit, address fabricant);
+    event ProprieteTransferee(string identifiantLot, string nouveauProprietaire, uint256 dateAchat);
+    event ParticipantAjoute(address participant);
+    event ParticipantSupprime(address participant);
 
-    mapping(address => Participant) public participants;
-    mapping(string => ProductLot) public productLots;
-    mapping(string => Transfer[]) public transferHistory;
-    string[] public lotIds;
-
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not owner");
+    // Modificateur pour vérifier l'autorisation via la whitelist
+    modifier onlyWhitelisted() {
+        require(whitelist[msg.sender], "Acces non autorise");
         _;
     }
 
-    modifier onlyAuthorized() {
-        require(participants[msg.sender].authorized, "Not authorized");
-        _;
+    // Gestion de la whitelist
+    function ajouterParticipant(address _participant) public onlyOwner {
+        whitelist[_participant] = true;
+        emit ParticipantAjoute(_participant);
     }
 
-    constructor() {
-        owner = msg.sender;
+    function supprimerParticipant(address _participant) public onlyOwner {
+        whitelist[_participant] = false;
+        emit ParticipantSupprime(_participant);
     }
 
-    function transferOwnership(address newOwner) public onlyOwner {
-        require(newOwner != address(0), "Invalid address");
-        owner = newOwner;
-    }
-
-    function setParticipant(address account, Role role, bool status) external onlyOwner {
-        participants[account] = Participant({authorized: status, role: role});
-    }
-
-    function getParticipantRole(address account) external view returns (Role) {
-        return participants[account].role;
-    }
-
-    function createProductLot(string memory productName, string memory lotId, uint256 totalQuantity) public onlyAuthorized {
-        require(participants[msg.sender].role == Role.Fabricant, "Not a fabricant");
-        require(productLots[lotId].manufacturer == address(0), "Lot already exists");
-
-        productLots[lotId] = ProductLot({
-            productName: productName,
-            lotId: lotId,
-            totalQuantity: totalQuantity,
-            manufacturer: msg.sender,
-            currentOwner: msg.sender,
-            purchaseDate: block.timestamp
+    // Enregistrement d'un nouveau produit
+    function enregistrerProduit(
+        string memory _identifiantLot,
+        string memory _nomProduit,
+        uint256 _nombreDeLots,
+        uint256 _quantite,
+        string memory _dernierProprietaire,
+        uint256 _dateAchat
+    ) public onlyWhitelisted {
+        produits[_identifiantLot] = Produit({
+            fabricant: msg.sender,
+            nombreDeLots: _nombreDeLots,
+            nomProduit: _nomProduit,
+            identifiantLot: _identifiantLot,
+            quantite: _quantite,
+            dernierProprietaire: _dernierProprietaire,
+            dateAchat: _dateAchat
         });
-
-        lotIds.push(lotId);
-        transferHistory[lotId].push(Transfer({from: address(0), to: msg.sender, date: block.timestamp}));
+        emit ProduitEnregistre(_identifiantLot, _nomProduit, msg.sender);
     }
 
-    function transferLotOwnership(string memory lotId, address newOwner) public onlyAuthorized {
-        ProductLot storage lot = productLots[lotId];
-        require(lot.currentOwner == msg.sender, "Not current owner");
-        require(participants[newOwner].authorized, "Recipient not authorized");
-
-        lot.currentOwner = newOwner;
-        lot.purchaseDate = block.timestamp;
-
-        transferHistory[lotId].push(Transfer({from: msg.sender, to: newOwner, date: block.timestamp}));
+    // Mise à jour du dernier propriétaire du produit
+    function transfererProduit(
+        string memory _identifiantLot,
+        string memory _nouveauProprietaire,
+        uint256 _dateAchat
+    ) public onlyWhitelisted {
+        Produit storage produit = produits[_identifiantLot];
+        produit.dernierProprietaire = _nouveauProprietaire;
+        produit.dateAchat = _dateAchat;
+        emit ProprieteTransferee(_identifiantLot, _nouveauProprietaire, _dateAchat);
     }
-
-    function getLotDetails(string memory lotId) public view returns (
-        string memory, string memory, uint256, address, address, uint256
-    ) {
-        ProductLot memory lot = productLots[lotId];
-        return (
-            lot.productName,
-            lot.lotId,
-            lot.totalQuantity,
-            lot.manufacturer,
-            lot.currentOwner,
-            lot.purchaseDate
-        );
-    }
-
-    function getTransferHistory(string memory lotId) public view returns (Transfer[] memory) {
-        return transferHistory[lotId];
-    }
-
-    function getAllLotIds() public view returns (string[] memory) {
-        return lotIds;
-    }
-} 
+}
