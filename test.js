@@ -3,10 +3,10 @@ const { ethers } = require("hardhat");
 
 describe("SupplyChainTraceability", function () {
   let supplyChain;
-  let owner, addr1, addr2;
+  let owner, addr1, addr2, addrs;
 
   beforeEach(async function () {
-    // Récupération des comptes de test
+    // Récupération des comptes de test et déclaration explicite de toutes les variables
     [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
     // Déploiement du contrat
     const SupplyChainFactory = await ethers.getContractFactory("SupplyChainTraceability");
