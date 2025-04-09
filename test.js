@@ -1,118 +1,137 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-describe("Traceabilite", function () {
-  let Traceabilite;
-  let traceabilite;
+describe("SupplyChainTraceability", function () {
+  let supplyChain;
   let owner, addr1, addr2;
 
   beforeEach(async function () {
-    // Récupérer le contract factory et les comptes de test
-    Traceabilite = await ethers.getContractFactory("Traceabilite");
-    [owner, addr1, addr2] = await ethers.getSigners();
-
-    // Déployer le contrat en utilisant le compte owner
-    traceabilite = await Traceabilite.deploy();
-    await traceabilite.deployed();
+    // Récupération des comptes de test
+    [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
+    // Déploiement du contrat
+    const SupplyChainFactory = await ethers.getContractFactory("SupplyChainTraceability");
+    supplyChain = await SupplyChainFactory.deploy();
+    await supplyChain.deployed();
   });
 
-  it("doit définir le bon propriétaire", async function () {
-    expect(await traceabilite.owner()).to.equal(owner.address);
+  describe("Déploiement", function () {
+    it("Doit définir le propriétaire initial correctement", async function () {
+      expect(await supplyChain.owner()).to.equal(owner.address);
+    });
+
+    it("Doit ajouter le propriétaire à la whitelist lors du déploiement", async function () {
+      expect(await supplyChain.whitelist(owner.address)).to.equal(true);
+    });
   });
 
-  it("doit permettre au propriétaire d'ajouter et de supprimer des participants", async function () {
-    // Ajout d'un participant (addr1)
-    await traceabilite.ajouterParticipant(addr1.address);
-    expect(await traceabilite.whitelist(addr1.address)).to.equal(true);
+  describe("Gestion de la propriété", function () {
+    it("Doit permettre le transfert de propriété par le propriétaire", async function () {
+      await expect(supplyChain.transferOwnership(addr1.address))
+        .to.emit(supplyChain, "OwnershipTransferred")
+        .withArgs(owner.address, addr1.address);
+      expect(await supplyChain.owner()).to.equal(addr1.address);
+      // Le nouveau propriétaire doit également être en whitelist
+      expect(await supplyChain.whitelist(addr1.address)).to.equal(true);
+    });
 
-    // Suppression du participant
-    await traceabilite.supprimerParticipant(addr1.address);
-    expect(await traceabilite.whitelist(addr1.address)).to.equal(false);
+    it("Doit rejeter le transfert de propriété par un non-propriétaire", async function () {
+      await expect(supplyChain.connect(addr1).transferOwnership(addr2.address))
+        .to.be.revertedWith("Seul le proprietaire peut effectuer cette operation");
+    });
   });
 
-  it("doit permettre à un participant whiteliste d'enregistrer un produit", async function () {
-    // Ajout de addr1 à la whitelist
-    await traceabilite.ajouterParticipant(addr1.address);
+  describe("Gestion de la Whitelist", function () {
+    it("Le propriétaire peut ajouter un participant", async function () {
+      await expect(supplyChain.addParticipant(addr1.address))
+        .to.emit(supplyChain, "ParticipantAdded")
+        .withArgs(addr1.address);
+      expect(await supplyChain.whitelist(addr1.address)).to.equal(true);
+    });
 
-    // Définition des paramètres du produit
-    const identifiantLot = "lot123";
-    const nomProduit = "ProduitTest";
-    const nombreDeLots = 1;
-    const quantite = 100;
-    const dernierProprietaire = "FabricantTest";
-    const dateAchat = Math.floor(Date.now() / 1000);
+    it("Le propriétaire peut retirer un participant", async function () {
+      // Ajout d'abord du participant
+      await supplyChain.addParticipant(addr1.address);
+      await expect(supplyChain.removeParticipant(addr1.address))
+        .to.emit(supplyChain, "ParticipantRemoved")
+        .withArgs(addr1.address);
+      expect(await supplyChain.whitelist(addr1.address)).to.equal(false);
+    });
 
-    // Enregistrement du produit via addr1
-    await traceabilite.connect(addr1).enregistrerProduit(
-      identifiantLot,
-      nomProduit,
-      nombreDeLots,
-      quantite,
-      dernierProprietaire,
-      dateAchat
-    );
+    it("Un non-propriétaire ne peut pas ajouter de participant", async function () {
+      await expect(
+        supplyChain.connect(addr1).addParticipant(addr2.address)
+      ).to.be.revertedWith("Seul le proprietaire peut effectuer cette operation");
+    });
 
-    // Vérification des données enregistrées
-    const produit = await traceabilite.produits(identifiantLot);
-    expect(produit.fabricant).to.equal(addr1.address);
-    expect(produit.nomProduit).to.equal(nomProduit);
-    expect(produit.nombreDeLots).to.equal(nombreDeLots);
-    expect(produit.quantite).to.equal(quantite);
-    expect(produit.dernierProprietaire).to.equal(dernierProprietaire);
-    expect(produit.dateAchat).to.equal(dateAchat);
+    it("Un non-propriétaire ne peut pas retirer de participant", async function () {
+      // Le propriétaire ajoute addr1, puis addr1 tente de se retirer
+      await supplyChain.addParticipant(addr1.address);
+      await expect(
+        supplyChain.connect(addr1).removeParticipant(addr1.address)
+      ).to.be.revertedWith("Seul le proprietaire peut effectuer cette operation");
+    });
   });
 
-  it("doit permettre à un participant whiteliste de transférer un produit", async function () {
-    // Ajout de addr1 à la whitelist et enregistrement d'un produit
-    await traceabilite.ajouterParticipant(addr1.address);
-    const identifiantLot = "lot456";
-    const nomProduit = "ProduitTest2";
-    const nombreDeLots = 1;
-    const quantite = 50;
-    const dernierProprietaire = "FabricantTest2";
-    const dateAchat = Math.floor(Date.now() / 1000);
-    await traceabilite.connect(addr1).enregistrerProduit(
-      identifiantLot,
-      nomProduit,
-      nombreDeLots,
-      quantite,
-      dernierProprietaire,
-      dateAchat
-    );
+  describe("Gestion des Produits", function () {
+    // Données de test pour un produit
+    const totalLots = 10;
+    const productName = "Produit Test";
+    const batchIdentifier = "Batch-001";
+    const totalProducts = 100;
+    const lastOwner = "Fabricant A";
+    const purchaseDate = 1633036800; // Exemple de timestamp Unix
 
-    // Transfert du produit par addr1
-    const nouveauProprietaire = "NouveauProprio";
-    const newDateAchat = dateAchat + 1000; // exemple de nouvelle date
-    await traceabilite.connect(addr1).transfererProduit(
-      identifiantLot,
-      nouveauProprietaire,
-      newDateAchat
-    );
-
-    // Vérification des données mises à jour
-    const produit = await traceabilite.produits(identifiantLot);
-    expect(produit.dernierProprietaire).to.equal(nouveauProprietaire);
-    expect(produit.dateAchat).to.equal(newDateAchat);
-  });
-
-  it("doit rejeter l'enregistrement d'un produit si l'appelant n'est pas whiteliste", async function () {
-    // addr2 n'est pas ajouté à la whitelist
-    const identifiantLot = "lot789";
-    const nomProduit = "ProduitTest3";
-    const nombreDeLots = 1;
-    const quantite = 200;
-    const dernierProprietaire = "FabricantTest3";
-    const dateAchat = Math.floor(Date.now() / 1000);
-
-    await expect(
-      traceabilite.connect(addr2).enregistrerProduit(
-        identifiantLot,
-        nomProduit,
-        nombreDeLots,
-        quantite,
-        dernierProprietaire,
-        dateAchat
+    it("Doit permettre à une adresse whitelisted d'ajouter un produit", async function () {
+      await expect(
+        supplyChain.addProduct(totalLots, productName, batchIdentifier, totalProducts, lastOwner, purchaseDate)
       )
-    ).to.be.revertedWith("Acces non autorise");
+        .to.emit(supplyChain, "ProductAdded")
+        .withArgs(1, productName, batchIdentifier);
+
+      const product = await supplyChain.products(1);
+      expect(product.manufacturer).to.equal(owner.address);
+      expect(product.totalLots).to.equal(totalLots);
+      expect(product.productName).to.equal(productName);
+      expect(product.batchIdentifier).to.equal(batchIdentifier);
+      expect(product.totalProducts).to.equal(totalProducts);
+      expect(product.lastOwner).to.equal(lastOwner);
+      expect(product.purchaseDate).to.equal(purchaseDate);
+    });
+
+    it("Doit rejeter l'ajout d'un produit par une adresse non-whitelisted", async function () {
+      await expect(
+        supplyChain.connect(addr1).addProduct(totalLots, productName, batchIdentifier, totalProducts, lastOwner, purchaseDate)
+      ).to.be.revertedWith("Adresse non autorisee");
+    });
+
+    it("Doit permettre la mise à jour des informations d'un produit", async function () {
+      // Ajout d'un produit
+      await supplyChain.addProduct(totalLots, productName, batchIdentifier, totalProducts, lastOwner, purchaseDate);
+      // Mise à jour du produit
+      const newLastOwner = "Nouveau Propriétaire";
+      const newPurchaseDate = purchaseDate + 1000;
+      await expect(
+        supplyChain.updateProduct(1, newLastOwner, newPurchaseDate)
+      )
+        .to.emit(supplyChain, "ProductUpdated")
+        .withArgs(1, newLastOwner, newPurchaseDate);
+
+      const product = await supplyChain.products(1);
+      expect(product.lastOwner).to.equal(newLastOwner);
+      expect(product.purchaseDate).to.equal(newPurchaseDate);
+    });
+
+    it("Doit rejeter la mise à jour pour un identifiant de produit invalide", async function () {
+      await expect(
+        supplyChain.updateProduct(99, "Fake Owner", purchaseDate)
+      ).to.be.revertedWith("Identifiant du produit invalide");
+    });
+
+    it("Doit rejeter la mise à jour d'un produit par une adresse non-whitelisted", async function () {
+      await supplyChain.addProduct(totalLots, productName, batchIdentifier, totalProducts, lastOwner, purchaseDate);
+      await expect(
+        supplyChain.connect(addr1).updateProduct(1, "Fake Owner", purchaseDate)
+      ).to.be.revertedWith("Adresse non autorisee");
+    });
   });
 });

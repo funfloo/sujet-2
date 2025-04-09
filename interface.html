@@ -2,226 +2,80 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Supply Chain - Traçabilité</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background-color: #f5f5f5;
-    }
-    .container {
-      max-width: 800px;
-      margin: auto;
-      background-color: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    h1, h2 {
-      color: #333;
-    }
-    input, button, select {
-      width: 100%;
-      padding: 10px;
-      margin: 8px 0;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-    }
-    button {
-      background-color: #4CAF50;
-      color: white;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-    .lot-details {
-      background-color: #f0f0f0;
-      padding: 15px;
-      border-radius: 6px;
-      margin-top: 20px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    table, th, td {
-      border: 1px solid #ccc;
-    }
-    th, td {
-      padding: 8px;
-      text-align: left;
-    }
-  </style>
+  <title>Interface de Traçabilité Blockchain</title>
+  <!-- Inclusion d'ethers.js depuis un CDN -->
   <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script>
 </head>
 <body>
-  <div class="container">
-    <h1>Traçabilité des Produits</h1>
-    <button id="connectWalletBtn">Se connecter avec MetaMask</button>
-    <p id="wallet-address"></p>
-
-    <h2>Attribuer un rôle</h2>
-    <input type="text" id="participantAddress" placeholder="Adresse">
-    <select id="participantRole">
-      <option value="1">Fabricant</option>
-      <option value="2">Transporteur</option>
-      <option value="3">Revendeur</option>
-      <option value="4">Client</option>
-    </select>
-    <button id="setRoleBtn">Définir le rôle</button>
-
-    <h2>Vérifier un rôle</h2>
-    <input type="text" id="roleCheckAddress" placeholder="Adresse">
-    <button id="getRoleBtn">Vérifier</button>
-    <p id="roleResult"></p>
-
-    <h2>Afficher l'historique de transfert</h2>
-    <input type="text" id="historyLotId" placeholder="Lot ID">
-    <button id="showHistoryBtn">Afficher l'historique</button>
-    <ul id="historyList"></ul>
+  <h1>Interface de Traçabilité des Produits</h1>
+  <div>
+    <button id="connectWallet">Connecter votre portefeuille</button>
+  </div>
+  <div id="contractInterface" style="display:none;">
+    <h2>Ajouter un Produit</h2>
+    <form id="productForm">
+      <label>Nom du Produit : <input type="text" id="productName" required></label><br>
+      <label>Nombre de Lots : <input type="number" id="totalLots" required></label><br>
+      <label>Identifiant du Lot : <input type="text" id="batchIdentifier" required></label><br>
+      <label>Total Produits par Lot : <input type="number" id="totalProducts" required></label><br>
+      <label>Dernier Propriétaire : <input type="text" id="lastOwner" required></label><br>
+      <label>Date d'Achat (timestamp Unix) : <input type="number" id="purchaseDate" required></label><br>
+      <button type="submit">Ajouter le Produit</button>
+    </form>
   </div>
 
   <script>
-    let provider, signer, contract;
-    const contractAddress = "0xYourContractAddressHere"; // Remplacez par l'adresse réelle de votre contrat
-    const abi = [
-      {
-        "inputs": [
-          {"internalType": "address", "name": "account", "type": "address"},
-          {"internalType": "uint8", "name": "role", "type": "uint8"},
-          {"internalType": "bool", "name": "status", "type": "bool"}
-        ],
-        "name": "setParticipant",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
-        "name": "getParticipantRole",
-        "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [{"internalType": "string", "name": "lotId", "type": "string"}],
-        "name": "getTransferHistory",
-        "outputs": [{
-          "components": [
-            {"internalType": "address", "name": "from", "type": "address"},
-            {"internalType": "address", "name": "to", "type": "address"},
-            {"internalType": "uint256", "name": "date", "type": "uint256"}
-          ],
-          "internalType": "struct SupplyChain.Transfer[]",
-          "name": "",
-          "type": "tuple[]"
-        }],
-        "stateMutability": "view",
-        "type": "function"
-      }
+    // Adresse du contrat déployé
+    const contractAddress = '0xYourContractAddressHere'; // Remplacer par l'adresse de ton contrat
+    // ABI généré lors de la compilation du contrat
+    const contractABI = [ 
+      // Insérer ici l’ABI du contrat (générée via Remix ou truffle)
     ];
 
-    // Connexion au wallet via MetaMask
-    async function connectWallet() {
-      if (window.ethereum) {
+    let provider;
+    let signer;
+    let contract;
+
+    // Bouton pour connecter le portefeuille (MetaMask)
+    document.getElementById("connectWallet").addEventListener("click", async () => {
+      if (typeof window.ethereum !== 'undefined') {
         try {
-          document.getElementById('wallet-address').innerText = "Connexion en cours...";
+          await ethereum.request({ method: 'eth_requestAccounts' });
           provider = new ethers.providers.Web3Provider(window.ethereum);
-          await provider.send("eth_requestAccounts", []);
           signer = provider.getSigner();
-          contract = new ethers.Contract(contractAddress, abi, signer);
-          const userAddress = await signer.getAddress();
-          document.getElementById('wallet-address').innerText = "Connecté : " + userAddress;
-        } catch (error) {
-          document.getElementById('wallet-address').innerText = "Erreur lors de la connexion";
-          console.error(error);
+          contract = new ethers.Contract(contractAddress, contractABI, signer);
+          document.getElementById("contractInterface").style.display = "block";
+        } catch (err) {
+          console.error(err);
+          alert("Connexion échouée");
         }
       } else {
         alert("Veuillez installer MetaMask");
       }
-    }
+    });
 
-    // Attribution d'un rôle à une adresse donnée
-    async function setRole() {
-      const address = document.getElementById("participantAddress").value.trim();
-      const role = document.getElementById("participantRole").value;
+    // Gestion du formulaire d'ajout de produit
+    document.getElementById("productForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
       
-      // Vérification de l'adresse Ethereum
-      if (!ethers.utils.isAddress(address)) {
-        alert("Adresse Ethereum invalide !");
-        return;
-      }
-      
-      const btn = document.getElementById("setRoleBtn");
-      btn.disabled = true;
+      // Récupérer les valeurs du formulaire
+      const productName = document.getElementById("productName").value;
+      const totalLots = parseInt(document.getElementById("totalLots").value);
+      const batchIdentifier = document.getElementById("batchIdentifier").value;
+      const totalProducts = parseInt(document.getElementById("totalProducts").value);
+      const lastOwner = document.getElementById("lastOwner").value;
+      const purchaseDate = parseInt(document.getElementById("purchaseDate").value);
+
+      // Appel de la fonction addProduct du contrat
       try {
-        const tx = await contract.setParticipant(address, role, true);
+        const tx = await contract.addProduct(totalLots, productName, batchIdentifier, totalProducts, lastOwner, purchaseDate);
         await tx.wait();
-        alert("Rôle assigné avec succès");
-      } catch (err) {
-        alert("Erreur : " + err.message);
-        console.error(err);
-      } finally {
-        btn.disabled = false;
+        alert("Produit ajouté avec succès !");
+      } catch (error) {
+        console.error(error);
+        alert("Erreur lors de l'ajout du produit");
       }
-    }
-
-    // Vérification du rôle d'une adresse
-    async function getRole() {
-      const address = document.getElementById("roleCheckAddress").value.trim();
-      
-      // Vérification de l'adresse Ethereum
-      if (!ethers.utils.isAddress(address)) {
-        alert("Adresse Ethereum invalide !");
-        return;
-      }
-      
-      try {
-        const role = await contract.getParticipantRole(address);
-        const roles = ["Aucun", "Fabricant", "Transporteur", "Revendeur", "Client"];
-        document.getElementById("roleResult").innerText = `Rôle de ${address} : ${roles[role] || "Inconnu"}`;
-      } catch (err) {
-        alert("Erreur : " + err.message);
-        console.error(err);
-      }
-    }
-
-    // Affichage de l'historique des transferts pour un Lot ID donné
-    async function showHistory() {
-      const lotId = document.getElementById("historyLotId").value.trim();
-      if (lotId === "") {
-        alert("Veuillez saisir un Lot ID");
-        return;
-      }
-      
-      const list = document.getElementById("historyList");
-      list.innerHTML = "<li>Chargement...</li>";
-      try {
-        const history = await contract.getTransferHistory(lotId);
-        list.innerHTML = '';
-        if (history.length === 0) {
-          list.innerHTML = "<li>Aucun transfert trouvé pour ce Lot ID</li>";
-          return;
-        }
-        history.forEach(h => {
-          const li = document.createElement("li");
-          li.innerText = `De ${h.from} à ${h.to} le ${new Date(h.date * 1000).toLocaleString()}`;
-          list.appendChild(li);
-        });
-      } catch (err) {
-        alert("Erreur : " + err.message);
-        console.error(err);
-      }
-    }
-
-    // Association des événements aux boutons
-    document.getElementById("connectWalletBtn").addEventListener("click", connectWallet);
-    document.getElementById("setRoleBtn").addEventListener("click", setRole);
-    document.getElementById("getRoleBtn").addEventListener("click", getRole);
-    document.getElementById("showHistoryBtn").addEventListener("click", showHistory);
+    });
   </script>
 </body>
 </html>
