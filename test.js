@@ -8,8 +8,8 @@ describe("SupplyChainTraceability", function () {
   beforeEach(async function () {
     // Récupération des comptes de test et déclaration explicite de toutes les variables
     [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
-    // Déploiement du contrat
-    const SupplyChainFactory = await ethers.getContractFactory("SupplyChainTraceability");
+    // Déploiement du contrat en utilisant le nom entièrement qualifié
+    const SupplyChainFactory = await ethers.getContractFactory("SupplyChainTraceability.sol:SupplyChainTraceability");
     supplyChain = await SupplyChainFactory.deploy();
     await supplyChain.deployed();
   });
